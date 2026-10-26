@@ -45,22 +45,127 @@ function updateCountdown(){
 }
 updateCountdown();setInterval(updateCountdown,1000);
 
-// Scratch-to-reveal interaction using a canvas.
-const canvas=document.getElementById('scratchCanvas'), ctx=canvas.getContext('2d');
-let drawing=false, scratched=0;
-function paintScratch(){
- const rect=canvas.getBoundingClientRect(), ratio=window.devicePixelRatio||1;
- canvas.width=Math.max(1,Math.round(rect.width*ratio));canvas.height=Math.max(1,Math.round(rect.height*ratio));
- ctx.setTransform(ratio,0,0,ratio,0,0);
- const grad=ctx.createLinearGradient(0,0,rect.width,rect.height);grad.addColorStop(0,'#d7b5b5');grad.addColorStop(.5,'#f4e7df');grad.addColorStop(1,'#c89da2');
- ctx.fillStyle=grad;ctx.fillRect(0,0,rect.width,rect.height);
- ctx.fillStyle='#9b6b70';ctx.textAlign='center';ctx.font='12px Georgia';ctx.fillText('✧  SCRATCH HERE  ✧',rect.width/2,rect.height/2);
- ctx.globalAlpha=.28;for(let i=0;i<150;i++){ctx.beginPath();ctx.arc(Math.random()*rect.width,Math.random()*rect.height,Math.random()*1.3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}ctx.globalAlpha=1;
+// Scratch-to-reveal — full-cover canvas with decorative heart, requires thorough scratching.
+const canvas = document.getElementById('scratchCanvas');
+const ctx    = canvas.getContext('2d');
+let drawing = false, revealed = false;
+
+function drawHeartOutline(cx, cy, w, h){
+  ctx.beginPath();
+  const topY = cy - h * 0.25;
+  ctx.moveTo(cx, cy + h * 0.35);
+  ctx.bezierCurveTo(cx - w*0.55, cy,      cx - w*0.55, topY - h*0.1, cx - w*0.28, topY - h*0.1);
+  ctx.bezierCurveTo(cx - w*0.1,  topY - h*0.1, cx, topY + h*0.05, cx, topY + h*0.15);
+  ctx.bezierCurveTo(cx,          topY + h*0.05, cx + w*0.1, topY - h*0.1, cx + w*0.28, topY - h*0.1);
+  ctx.bezierCurveTo(cx + w*0.55, topY - h*0.1, cx + w*0.55, cy, cx, cy + h*0.35);
+  ctx.closePath();
 }
-function scratch(e){if(!drawing)return;const r=canvas.getBoundingClientRect();const x=(e.clientX-r.left),y=(e.clientY-r.top);ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(x,y,23,0,Math.PI*2);ctx.fill();scratched++;if(scratched>35)canvas.style.opacity='0';}
-canvas.addEventListener('pointerdown',e=>{drawing=true;canvas.setPointerCapture(e.pointerId);scratch(e)});
-canvas.addEventListener('pointermove',scratch);canvas.addEventListener('pointerup',()=>drawing=false);canvas.addEventListener('pointercancel',()=>drawing=false);
-paintScratch();window.addEventListener('resize',()=>{if(canvas.style.opacity!=='0')paintScratch()});
+
+function paintScratch(){
+  const rect  = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width  = Math.max(1, Math.round(rect.width  * ratio));
+  canvas.height = Math.max(1, Math.round(rect.height * ratio));
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  const W = rect.width, H = rect.height;
+  const cx = W / 2, cy = H / 2;
+
+  // 1. Fill the ENTIRE rectangle — completely hides message underneath
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0,    '#c9716e');
+  grad.addColorStop(0.35, '#e8b8b5');
+  grad.addColorStop(0.65, '#d9a0aa');
+  grad.addColorStop(1,    '#a84f62');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. Fine noise / shimmer
+  ctx.globalAlpha = 0.18;
+  for(let i = 0; i < 300; i++){
+    ctx.beginPath();
+    ctx.arc(Math.random()*W, Math.random()*H, Math.random()*1.4 + 0.3, 0, Math.PI*2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 3. Gold decorative heart outline (not a clip — purely visual)
+  drawHeartOutline(cx, cy, W * 0.78, H * 0.78);
+  const heartGrad = ctx.createLinearGradient(0, 0, W, H);
+  heartGrad.addColorStop(0,   '#f0d080');
+  heartGrad.addColorStop(0.5, '#c8a040');
+  heartGrad.addColorStop(1,   '#f0d080');
+  ctx.strokeStyle = heartGrad;
+  ctx.lineWidth   = 3;
+  ctx.shadowColor = '#b8900080';
+  ctx.shadowBlur  = 6;
+  ctx.stroke();
+  ctx.shadowBlur  = 0;
+
+  // 4. Fill heart with a slightly lighter tint
+  drawHeartOutline(cx, cy, W * 0.78, H * 0.78);
+  const innerGrad = ctx.createRadialGradient(cx, cy - H*0.05, H*0.05, cx, cy, H*0.5);
+  innerGrad.addColorStop(0,   '#e8c0bc55');
+  innerGrad.addColorStop(1,   '#b06070aa');
+  ctx.fillStyle = innerGrad;
+  ctx.fill();
+
+  // 5. Instruction text inside heart
+  ctx.fillStyle   = '#fff5ee';
+  ctx.textAlign   = 'center';
+  ctx.shadowColor = '#80203040';
+  ctx.shadowBlur  = 4;
+  ctx.font        = 'bold 14px Georgia';
+  ctx.fillText('♥  SCRATCH HERE  ♥', cx, cy - 12);
+  ctx.font        = '11px Georgia';
+  ctx.fillStyle   = '#ffe0d8';
+  ctx.fillText('Scratch the whole area to reveal', cx, cy + 10);
+  ctx.shadowBlur  = 0;
+}
+
+function checkReveal(){
+  if(revealed) return;
+  // Sample every 8th pixel for performance (covers entire canvas)
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let total = 0, transparent = 0;
+  for(let i = 3; i < data.length; i += 32){ // alpha channel, every 8th pixel
+    total++;
+    if(data[i] < 15) transparent++;
+  }
+  // Only reveal when 85% of the whole canvas is cleared
+  if(total > 0 && transparent / total > 0.85){
+    revealed = true;
+    canvas.style.transition = 'opacity 1s ease';
+    canvas.style.opacity    = '0';
+  }
+}
+
+function getXY(e){
+  const r = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function doScratch(e){
+  if(!drawing || revealed) return;
+  const { x, y } = getXY(e);
+  ctx.globalCompositeOperation = 'destination-out';
+  // Large brush so user can cover area reasonably
+  ctx.beginPath();
+  ctx.arc(x, y, 28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  checkReveal();
+}
+
+canvas.addEventListener('pointerdown',  e => { drawing = true; canvas.setPointerCapture(e.pointerId); doScratch(e); });
+canvas.addEventListener('pointermove',  doScratch);
+canvas.addEventListener('pointerup',    () => drawing = false);
+canvas.addEventListener('pointercancel',() => drawing = false);
+
+paintScratch();
+window.addEventListener('resize', () => { if(!revealed) paintScratch(); });
 
 // Wish form opens WhatsApp with the entered message; no data is stored by this static site.
 document.getElementById('wishForm').addEventListener('submit',e=>{
