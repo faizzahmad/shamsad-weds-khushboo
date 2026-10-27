@@ -35,9 +35,9 @@ document.querySelectorAll('[data-scroll]').forEach(button => button.addEventList
   const target=document.querySelector(button.dataset.scroll); if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
 }));
 
-// Countdown to the Nikah date (India Standard Time).
+// Countdown to the Walima Reception date (India Standard Time).
 function updateCountdown(){
- const distance=Math.max(0,new Date('2026-10-31T00:00:00+05:30').getTime()-Date.now());
+ const distance=Math.max(0,new Date('2026-11-01T17:00:00+05:30').getTime()-Date.now());
  document.getElementById('days').textContent=String(Math.floor(distance/86400000)).padStart(2,'0');
  document.getElementById('hours').textContent=String(Math.floor(distance%86400000/3600000)).padStart(2,'0');
  document.getElementById('minutes').textContent=String(Math.floor(distance%3600000/60000)).padStart(2,'0');
@@ -170,8 +170,8 @@ window.addEventListener('resize', () => { if(!revealed) paintScratch(); });
 // Wish form opens WhatsApp with the entered message; no data is stored by this static site.
 document.getElementById('wishForm').addEventListener('submit',e=>{
  e.preventDefault();const data=new FormData(e.currentTarget);
- const message=`Wedding wishes for Md Shamsad & Khushboo Parween%0AName: ${encodeURIComponent(data.get('name'))}%0AAttendance: ${encodeURIComponent(data.get('attendance'))}%0AEmail: ${encodeURIComponent(data.get('email')||'Not provided')}%0AMessage: ${encodeURIComponent(data.get('message')||'Best wishes and duas!')}`;
- window.open('https://wa.me/917549917851?text='+message,'_blank','noopener');
+ const message=`Walima Reception Wishes for Md Shamsad & Khushboo Parween%0AName: ${encodeURIComponent(data.get('name'))}%0AAttendance: ${encodeURIComponent(data.get('attendance'))}%0AEmail: ${encodeURIComponent(data.get('email')||'Not provided')}%0AMessage: ${encodeURIComponent(data.get('message')||'Best wishes and duas!')}`;
+ window.open('https://wa.me/918674892596?text='+message,'_blank','noopener');
 });
 // Sound toggle is intentionally visual-only until an audio file is supplied.
 const music=document.getElementById('musicToggle');let musicOn=false;
